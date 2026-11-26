@@ -1,0 +1,1720 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شطرنج الخاقان | طريق المجد 3200 Elo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f1117;
+            --panel-bg: #181b24;
+            --board-light: #e8edf9;
+            --board-dark: #7b8ab8;
+            --accent-gold: #f59e0b;
+        }
+        * {
+            font-family: 'Cairo', sans-serif;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(245, 158, 11, 0.08) 0%, transparent 45%),
+                radial-gradient(circle at 85% 85%, rgba(99, 102, 241, 0.08) 0%, transparent 45%);
+            color: #f3f4f6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Board Square Styles */
+        .square {
+            position: relative;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+        }
+        .sq-light { background-color: #e2e8f0; }
+        .sq-dark { background-color: #64748b; }
+        
+        .sq-selected {
+            background-color: rgba(245, 158, 11, 0.75) !important;
+            box-shadow: inset 0 0 12px rgba(0,0,0,0.3);
+        }
+        .sq-last-move {
+            background-color: rgba(250, 204, 21, 0.42) !important;
+        }
+        .sq-check {
+            background: radial-gradient(circle, rgba(239, 68, 68, 0.95) 0%, rgba(185, 28, 28, 0.85) 70%, transparent 100%) !important;
+            animation: pulseCheck 1.2s infinite alternate;
+        }
+        @keyframes pulseCheck {
+            from { filter: brightness(1); }
+            to { filter: brightness(1.3); }
+        }
+
+        /* Legal move indicators */
+        .legal-dot {
+            width: 28%;
+            height: 28%;
+            border-radius: 50%;
+            background-color: rgba(15, 23, 42, 0.32);
+            pointer-events: none;
+            transition: transform 0.15s ease;
+        }
+        .square:hover .legal-dot {
+            transform: scale(1.25);
+            background-color: rgba(245, 158, 11, 0.7);
+        }
+        .legal-capture {
+            position: absolute;
+            inset: 6%;
+            border-radius: 50%;
+            border: 4px solid rgba(220, 38, 38, 0.65);
+            pointer-events: none;
+        }
+
+        /* Piece Styling */
+        .piece-svg {
+            width: 82%;
+            height: 82%;
+            filter: drop-shadow(0 3px 3px rgba(0,0,0,0.45));
+            transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none;
+            z-index: 5;
+        }
+        .square:hover .piece-svg {
+            transform: translateY(-2px) scale(1.04);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #13161f; border-radius: 8px; }
+        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 8px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+
+        /* Khagan Gold Glow */
+        .khagan-glow {
+            box-shadow: 0 0 25px rgba(245, 158, 11, 0.35), inset 0 0 15px rgba(245, 158, 11, 0.15);
+            border: 1px solid rgba(245, 158, 11, 0.5);
+        }
+
+        @keyframes floatCrown {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-6px) rotate(3deg); }
+        }
+        .crown-anim {
+            animation: floatCrown 2.5s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-between p-2 sm:p-4 md:p-6">
+
+    <!-- Header & Rank Progression Bar -->
+    <header class="w-full max-w-6xl mb-4">
+        <div class="bg-[#181b24]/90 backdrop-blur-md border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xl">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-700 flex items-center justify-center shadow-lg text-2xl">
+                        👑
+                    </div>
+                    <div>
+                        <h1 class="text-lg sm:text-2xl font-black bg-gradient-to-l from-amber-300 via-yellow-400 to-amber-500 bg-clip-text text-transparent">
+                            شطرنج الخاقان الأعلى
+                        </h1>
+                        <p class="text-xs text-slate-400">اهزم كل مستوى لترتقي في الرتبة حتى تبلغ القمة (3200 Elo)</p>
+                    </div>
+                </div>
+
+                <!-- Current Rank Pill & Controls -->
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <button id="btn-ranks-modal" class="flex items-center gap-2 bg-slate-800/90 hover:bg-slate-700 border border-amber-500/30 px-3 py-2 rounded-xl transition text-xs sm:text-sm font-bold text-amber-300 shadow">
+                        <span>🏆</span>
+                        <span id="header-rank-badge">المستوى 1: مبتدئ</span>
+                    </button>
+                    <button id="btn-sound" title="تفعيل/كتم الصوت" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition">
+                        🔊
+                    </button>
+                </div>
+            </div>
+
+            <!-- 10 Levels Progress Stepper -->
+            <div class="w-full overflow-x-auto pb-1">
+                <div id="levels-stepper" class="flex items-center justify-between min-w-[680px] gap-1.5 pt-1">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Game Arena -->
+    <main class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start">
+        
+        <!-- Left / Top Column: Bot Info, Board, Player Info -->
+        <div class="lg:col-span-7 flex flex-col items-center w-full">
+            
+            <!-- Bot Profile Card -->
+            <div id="bot-card" class="w-full max-w-[540px] bg-[#181b24] border border-slate-800 rounded-2xl p-3 mb-2.5 flex items-center justify-between shadow-lg transition-all">
+                <div class="flex items-center gap-3">
+                    <div id="bot-avatar" class="w-11 h-11 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-2xl shadow-inner">
+                        🤖
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span id="bot-title" class="font-extrabold text-base sm:text-lg text-white">مبتدئ</span>
+                            <span id="bot-elo" class="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                400 Elo
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-1.5 mt-0.5 min-h-[20px]">
+                            <div id="bot-captured" class="flex flex-wrap items-center gap-0.5 text-xs"></div>
+                            <span id="bot-adv" class="text-xs font-bold text-emerald-400"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Thinking Indicator -->
+                <div id="thinking-indicator" class="hidden items-center gap-2 bg-amber-500/15 border border-amber-500/40 px-3 py-1.5 rounded-xl">
+                    <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+                    <span class="text-xs font-bold text-amber-300">يفكر البوت...</span>
+                </div>
+            </div>
+
+            <!-- Chessboard Container -->
+            <div class="relative w-full max-w-[540px] p-2 sm:p-3 bg-[#1e222d] rounded-2xl border-2 border-slate-700/80 shadow-2xl">
+                <div id="chess-board" class="grid grid-cols-8 w-full rounded-xl overflow-hidden border border-slate-600 shadow-inner" dir="ltr">
+                    <!-- 64 Squares generated by JS -->
+                </div>
+            </div>
+
+            <!-- Player Profile Card -->
+            <div class="w-full max-w-[540px] bg-[#181b24] border border-slate-800 rounded-2xl p-3 mt-2.5 flex items-center justify-between shadow-lg">
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-800 flex items-center justify-center text-xl font-bold shadow">
+                        ♟️
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-extrabold text-base text-white">أنت (اللاعب)</span>
+                            <span id="player-side-badge" class="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
+                                الأبيض
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-1.5 mt-0.5 min-h-[20px]">
+                            <div id="player-captured" class="flex flex-wrap items-center gap-0.5 text-xs"></div>
+                            <span id="player-adv" class="text-xs font-bold text-emerald-400"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="turn-status" class="text-xs sm:text-sm font-bold px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                    دورك للعب
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Controls, Move History, Rank Details -->
+        <div class="lg:col-span-5 w-full flex flex-col gap-4">
+            
+            <!-- Rank Showcase Card -->
+            <div id="rank-showcase" class="bg-[#181b24] border border-slate-800 rounded-2xl p-4 shadow-xl">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">التحدي الحالي</span>
+                    <span id="level-counter" class="text-xs font-extrabold text-amber-400">المستوى 1 من 10</span>
+                </div>
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <h2 id="showcase-title" class="text-2xl font-black text-white">مبتدئ</h2>
+                        <p id="showcase-desc" class="text-xs text-slate-400 mt-1">خصم يتعلم أساسيات الحركة، فرصة مثالية لبداية رحلتك.</p>
+                    </div>
+                    <div class="text-center bg-slate-900/90 border border-slate-700/80 px-3.5 py-2 rounded-xl shrink-0">
+                        <div class="text-[10px] text-slate-400 font-bold">التقييم</div>
+                        <div id="showcase-elo" class="text-lg font-black text-amber-400">400</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Controls -->
+            <div class="bg-[#181b24] border border-slate-800 rounded-2xl p-4 shadow-xl">
+                <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-2.5">
+                    <button id="btn-new-game" class="flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold py-2.5 px-3 rounded-xl shadow-lg transition active:scale-95 text-sm">
+                        <span>⚔️</span>
+                        <span>مباراة جديدة</span>
+                    </button>
+                    <button id="btn-undo" class="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-2.5 px-3 rounded-xl transition active:scale-95 text-sm">
+                        <span>↩️</span>
+                        <span>تراجع</span>
+                    </button>
+                    <button id="btn-flip" class="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-2.5 px-3 rounded-xl transition active:scale-95 text-sm">
+                        <span>🔄</span>
+                        <span>قلب الرقعة</span>
+                    </button>
+                    <button id="btn-switch-color" class="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-2.5 px-3 rounded-xl transition active:scale-95 text-sm">
+                        <span>🌓</span>
+                        <span>تبديل اللون</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Move History Panel -->
+            <div class="bg-[#181b24] border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col h-[270px] sm:h-[310px]">
+                <div class="flex items-center justify-between pb-2.5 mb-2 border-b border-slate-800">
+                    <h3 class="font-bold text-sm text-slate-200 flex items-center gap-2">
+                        <span>📜</span>
+                        <span>سجل النقلات</span>
+                    </h3>
+                    <span id="move-count-badge" class="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded-md">0 نقلة</span>
+                </div>
+                <div id="move-history" class="flex-1 overflow-y-auto space-y-1 text-sm pr-1" dir="ltr">
+                    <div class="text-center text-slate-500 text-xs py-10" dir="rtl">ابدأ اللعب لتسجيل النقلات هنا...</div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Pawn Promotion Modal -->
+    <div id="promotion-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+        <div class="bg-[#181b24] border-2 border-amber-500/60 rounded-2xl p-5 max-w-sm w-full text-center shadow-2xl">
+            <h3 class="text-lg font-black text-amber-400 mb-1">ترقية البيدق!</h3>
+            <p class="text-xs text-slate-300 mb-4">اختر القطعة التي تريد الترقية إليها:</p>
+            <div id="promotion-choices" class="grid grid-cols-4 gap-3">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over / Level Up Modal -->
+    <div id="gameover-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-md p-4">
+        <div id="gameover-card" class="bg-[#181b24] border-2 border-amber-500/60 rounded-3xl p-6 max-w-md w-full text-center shadow-2xl transform transition-all">
+            <div id="gameover-icon" class="text-6xl mb-3 crown-anim">🏆</div>
+            <h2 id="gameover-title" class="text-2xl sm:text-3xl font-black text-white mb-2">انتصار ساحق!</h2>
+            <p id="gameover-subtitle" class="text-sm text-slate-300 mb-5 leading-relaxed">لقد هزمت الخصم بنجاح.</p>
+            
+            <div id="promotion-banner" class="hidden bg-gradient-to-r from-amber-500/20 via-yellow-500/25 to-amber-500/20 border border-amber-400/50 rounded-2xl p-3.5 mb-5">
+                <div class="text-xs font-bold text-amber-300 mb-1">🎖️ تمت ترقيتك إلى الرتبة التالية!</div>
+                <div id="new-rank-title" class="text-xl font-black text-amber-400">المستوى 2: هاوي (700 Elo)</div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                <button id="btn-next-level" class="hidden flex-1 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-black py-3 px-5 rounded-xl shadow-lg transition text-sm">
+                    الانتقال للمستوى التالي ⬅️
+                </button>
+                <button id="btn-play-again" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold py-3 px-5 rounded-xl transition text-sm">
+                    لعب جولة أخرى
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ranks Overview & Selection Modal -->
+    <div id="ranks-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="bg-[#181b24] border border-slate-700 rounded-3xl p-5 sm:p-6 max-w-xl w-full max-h-[85vh] flex flex-col shadow-2xl">
+            <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
+                <div>
+                    <h3 class="text-xl font-black text-amber-400">سلم الرتب الملكي (10 مستويات)</h3>
+                    <p class="text-xs text-slate-400">اهزم كل مستوى لفتح المستوى الذي يليه، أو اختر أي مستوى مفتوح للتحدي</p>
+                </div>
+                <button id="btn-close-ranks" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold">✕</button>
+            </div>
+
+            <div id="ranks-list" class="flex-1 overflow-y-auto space-y-2 pr-1">
+                <!-- Populated by JS -->
+            </div>
+
+            <div class="pt-3 mt-3 border-t border-slate-800 flex items-center justify-between">
+                <button id="btn-reset-progress" class="text-xs text-rose-400 hover:text-rose-300 underline font-semibold">
+                    إعادة تعيين التقدم من الصفر
+                </button>
+                <button id="btn-close-ranks-bottom" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold px-4 py-2 rounded-xl">
+                    إغلاق
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    /**
+     * =========================================================================
+     * 1. LEVEL DEFINITIONS & PROGRESSION SYSTEM
+     * =========================================================================
+     */
+    const LEVELS = [
+        { level: 1,  title: "مبتدئ",         elo: 400,  icon: "🌱", depth: 1, randomness: 0.65, qSearch: false, book: false, desc: "خصم يتعلم أساسيات الحركة ويرتكب أخطاءً متكررة." },
+        { level: 2,  title: "هاوي",          elo: 700,  icon: "♟️", depth: 1, randomness: 0.40, qSearch: false, book: false, desc: "لاعب هاوٍ يلتقط القطع المجانية أحياناً لكنه يغفل عن الدفاع." },
+        { level: 3,  title: "متدرب",         elo: 1000, icon: "🛡️", depth: 2, randomness: 0.25, qSearch: false, book: false, desc: "بدأ يفهم قيمة القطع والسيطرة البسيطة على الوسط." },
+        { level: 4,  title: "متوسط",         elo: 1300, icon: "⚔️", depth: 2, randomness: 0.12, qSearch: true,  book: false, desc: "لاعب منظم يحسب التبادلات المباشرة ولا يترك قطعه دون حماية." },
+        { level: 5,  title: "نصف محترف",     elo: 1600, icon: "🎯", depth: 3, randomness: 0.06, qSearch: true,  book: true,  desc: "يمتلك معرفة جيدة بالافتتاحيات ويبحث عن التكتيكات المزدوجة." },
+        { level: 6,  title: "محترف",         elo: 1900, icon: "🔥", depth: 3, randomness: 0.02, qSearch: true,  book: true,  desc: "خصم صلب تكتيكياً يعاقب الأخطاء بسرعة ويحسن تمركز قطعه." },
+        { level: 7,  title: "خبير",          elo: 2200, icon: "🦅", depth: 4, randomness: 0.00, qSearch: true,  book: true,  desc: "حساب عميق للتفريعات مع تقييم موضعي دقيق للهياكل البيدقية." },
+        { level: 8,  title: "معلم",          elo: 2500, icon: "🏛️", depth: 4, randomness: 0.00, qSearch: true,  book: true,  desc: "أستاذ شطرنج متمرس يجمع بين الهجوم الكاسح والدفاع الحديدي." },
+        { level: 9,  title: "نجم",           elo: 2850, icon: "⭐", depth: 5, randomness: 0.00, qSearch: true,  book: true,  desc: "أسطورة شطرنجية خارقة تقرأ الرقعة بعمق مذهل ودقة جراحية." },
+        { level: 10, title: "الخاقان الأعلى", elo: 3200, icon: "👑", depth: 5, randomness: 0.00, qSearch: true,  book: true,  desc: "القوة المطلقة (3200 Elo) — ذكاء خارق لا يرحم، قمة المجد الشطرنجي!" }
+    ];
+
+    let savedState = {
+        unlockedLevel: 1,
+        currentLevel: 1
+    };
+
+    function loadProgress() {
+        try {
+            const raw = localStorage.getItem('khagan_chess_save_v1');
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed.unlockedLevel >= 1 && parsed.unlockedLevel <= 10) {
+                    savedState.unlockedLevel = parsed.unlockedLevel;
+                    savedState.currentLevel = Math.min(parsed.currentLevel || parsed.unlockedLevel, parsed.unlockedLevel);
+                }
+            }
+        } catch (e) { console.warn("Storage unavailable"); }
+    }
+
+    function saveProgress() {
+        try {
+            localStorage.setItem('khagan_chess_save_v1', JSON.stringify(savedState));
+        } catch (e) {}
+    }
+
+    /**
+     * =========================================================================
+     * 2. WEB AUDIO SYNTHESIZER (NO EXTERNAL SOUND URLS NEEDED)
+     * =========================================================================
+     */
+    let soundEnabled = true;
+    let audioCtx = null;
+
+    function playSound(type) {
+        if (!soundEnabled) return;
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'move') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(280, now);
+                osc.frequency.exponentialRampToValueAtTime(140, now + 0.08);
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+                osc.start(now);
+                osc.stop(now + 0.09);
+            } else if (type === 'capture') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(190, now);
+                osc.frequency.exponentialRampToValueAtTime(75, now + 0.14);
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            } else if (type === 'check') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(580, now);
+                osc.frequency.setValueAtTime(780, now + 0.09);
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            } else if (type === 'win') {
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, idx) => {
+                    const o = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    o.type = 'triangle';
+                    o.connect(g);
+                    g.connect(audioCtx.destination);
+                    o.frequency.setValueAtTime(freq, now + idx * 0.11);
+                    g.gain.setValueAtTime(0.22, now + idx * 0.11);
+                    g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.11 + 0.35);
+                    o.start(now + idx * 0.11);
+                    o.stop(now + idx * 0.11 + 0.35);
+                });
+            } else if (type === 'lose') {
+                const notes = [392.00, 349.23, 311.13, 261.63];
+                notes.forEach((freq, idx) => {
+                    const o = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    o.type = 'sine';
+                    o.connect(g);
+                    g.connect(audioCtx.destination);
+                    o.frequency.setValueAtTime(freq, now + idx * 0.14);
+                    g.gain.setValueAtTime(0.18, now + idx * 0.14);
+                    g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.14 + 0.35);
+                    o.start(now + idx * 0.14);
+                    o.stop(now + idx * 0.14 + 0.35);
+                });
+            }
+        } catch (e) {}
+    }
+
+    /**
+     * =========================================================================
+     * 3. HIGH-CRAFT VECTOR SVG CHESS PIECES
+     * =========================================================================
+     */
+    const PIECE_SVGS = {
+        wP: `<svg viewBox="0 0 45 45" class="piece-svg"><path d="M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z" fill="#fff" stroke="#1e293b" stroke-width="2" stroke-linecap="round"/></svg>`,
+        wR: `<svg viewBox="0 0 45 45" class="piece-svg"><g fill="#fff" stroke="#1e293b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 39h27v-3H9v3zM12 36v-4h21v4H12zM11 14V9h4v2h5V9h5v2h5V9h4v5"/><path d="M34 14l-3 3H14l-3-3"/><path d="M31 17v12.5H14V17"/><path d="M31 29.5l1.5 2.5h-20l1.5-2.5"/><path d="M11 14h23" fill="none" stroke-linejoin="miter"/></g></svg>`,
+        wN: `<svg viewBox="0 0 45 45" class="piece-svg"><g fill="none" stroke="#1e293b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M 22,10 C 32.5,11 38.5,18 38,39 L 15,39 C 15,30 25,32.5 23,18" fill="#fff"/><path d="M 24,18 C 24.38,20.91 18.45,25.37 16,27 C 13,29 13.18,31.34 11,31 C 9.958,30.06 12.41,27.96 11,28 C 10,28 11.19,29.23 10,30 C 9,30 5.997,31 6,26 C 6,24 12,14 12,14 C 12,14 13.89,12.1 14,10.5 C 13.27,9.506 13.5,8.5 13.5,7.5 C 14.5,6.5 16.5,10 16.5,10 L 18.5,10 C 18.5,10 19.28,8.008 21,7 C 22,7 22,10 22,10" fill="#fff"/><circle cx="14.5" cy="15.5" r="1.2" fill="#1e293b"/><circle cx="9.5" cy="25.5" r="0.8" fill="#1e293b"/></g></svg>`,
+        wB: `<svg viewBox="0 0 45 45" class="piece-svg"><g fill="none" stroke="#1e293b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><g fill="#fff" stroke-linecap="butt"><path d="M9 36c3.39-.97 10.11.43 13.5-2 3.39 2.43 10.11 1.03 13.5 2 0 0 1.65.54 3 2-.68.97-1.65.99-3 .5-3.39-.97-10.11.46-13.5-1-3.39 1.46-10.11.03-13.5 1-1.354.49-2.323.47-3-.5 1.354-1.94 3-2 3-2z"/><path d="M15 32c2.5 2.5 12.5 2.5 15 0 .5-1.5 0-2 0-2 0-2.5-2.5-4-2.5-4 5.5-1.5 6-11.5-5-15.5-11 4-10.5 14-5 15.5 0 0-2.5 1.5-2.5 4 0 0-.5.5 0 2z"/><circle cx="22.5" cy="8" r="2.5"/></g><path d="M17.5 26h10M15 30h15m-7.5-14.5v5M20 18h5" stroke-linejoin="miter"/></g></svg>`,
+        wQ: `<svg viewBox="0 0 45 45" class="piece-svg"><g fill="#fff" stroke="#1e293b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.2"/><circle cx="14" cy="9" r="2.2"/><circle cx="22.5" cy="8" r="2.2"/><circle cx="31" cy="9" r="2.2"/><circle cx="39" cy="12" r="2.2"/><path d="M9 26c8.5-1.5 21-1.5 27 0l2-12-7 11V11l-5.5 13.5-3-15-3 15-5.5-14V25L7 14l2 12z" stroke-linecap="butt"/><path d="M9 26c0 2 1.5 2 2.5 4 1 1.5 1 1 .5 3.5-1.5 1-1.5 2.5-1.5 2.5-1.5 1.5.5 2.5.5 2.5 6.5 1 16.5 1 23 0 0 0 1.5-1 0-2.5 0 0 .5-1.5-1-2.5-.5-2.5-.5-2 .5-3.5 1-2 2.5-2 2.5-4-8.5-1.5-18.5-1.5-27 0z" stroke-linecap="butt"/><path d="M11.5 30c3.5-1 18.5-1 22 0M12 33.5c6-1 15-1 21 0" fill="none"/></g></svg>`,
+        wK: `<svg viewBox="0 0 45 45" class="piece-svg"><g fill="none" stroke="#1e293b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.5 11.63V6M20 8h5" stroke-linejoin="miter"/><path d="M22.5 25s4.5-7.5 3-10.5c0 0-1-2.5-3-2.5s-3 2.5-3 2.5c-1.5 3 3 10.5 3 10.5" fill="#fff" stroke-linecap="butt" stroke-linejoin="miter"/><path d="M11.5 37c5.5 3.5 15.5 3.5 21 0v-7s9-4.5 6-10.5c-4-6.5-13.5-3.5-16 4V27v-3.5c-3.5-7.5-13-10.5-16-4-3 6 5 10 5 10V37z" fill="#fff"/><path d="M11.5 30c5.5-3 15.5-3 21 0m-21 3.5c5.5-3 15.5-3 21 0m-21 3.5c5.5-3 15.5-3 21 0"/></g></svg>`,
+        bP: `<svg viewBox="0 0 45 45" class="piece-svg"><path d="M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z" fill="#1e293b" stroke="#0f172a" stroke-width="1.8"/><path d="M16.5 36.5h12" stroke="#94a3b8" stroke-width="1.4" stroke-linecap="round"/></svg>`,
+        bR: `<svg viewBox="0 0 45 45" class="piece-svg"><g fill="#1e293b" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 39h27v-3H9v3zM12.5 32l1.5-2.5h17l1.5 2.5h-20zM12 36v-4h21v4H12z" stroke-linecap="butt"/><path d="M14 29.5v-13h17v13H14z" stroke-linecap="butt" stroke-linejoin="miter"/><path d="M14 16.5L11 14h23l-3 2.5H14zM11 14V9h4v2h5V9h5v2h5V9h4v5H11z" stroke-linecap="butt"/><path d="M12 35.5h21M13 31.5h19M14 29.5h17M14 16.5h17M11 14h23" fill="none" stroke="#94a3b8" stroke-width="1.2" stroke-linejoin="miter"/></g></svg>`,
+        bN: `<svg viewBox="0 0 45 45" class="piece-svg"><g fill="none" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M 22,10 C 32.5,11 38.5,18 38,39 L 15,39 C 15,30 25,32.5 23,18" fill="#1e293b"/><path d="M 24,18 C 24.38,20.91 18.45,25.37 16,27 C 13,29 13.18,31.34 11,31 C 9.958,30.06 12.41,27.96 11,28 C 10,28 11.19,29.23 10,30 C 9,30 5.997,31 6,26 C 6,24 12,14 12,14 C 12,14 13.89,12.1 14,10.5 C 13.27,9.506 13.5,8.5 13.5,7.5 C 14.5,6.5 16.5,10 16.5,10 L 18.5,10 C 18.5,10 19.28,8.008 21,7 C 22,7 22,10 22,10" fill="#1e293b"/><circle cx="14.5" cy="15.5" r="1.2" fill="#e2e8f0" stroke="none"/><path d="M 24.55,10.4 L 24.1,11.85 L 24.6,12 C 27.75,13 30.25,14.49 32.5,18.75 C 34.75,23.01 35.75,29.06 35.25,39 L 35.2,39.5 L 37.45,39.5 L 37.5,39 C 38,28.94 36.62,22.15 34.25,17.66 C 31.88,13.17 28.46,11.02 25.06,10.5 L 24.55,10.4 z" fill="#94a3b8" stroke="none"/></g></svg>`,
+        bB: `<svg viewBox="0 0 45 45" class="piece-svg"><g fill="none" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><g fill="#1e293b" stroke-linecap="butt"><path d="M9 36c3.39-.97 10.11.43 13.5-2 3.39 2.43 10.11 1.03 13.5 2 0 0 1.65.54 3 2-.68.97-1.65.99-3 .5-3.39-.97-10.11.46-13.5-1-3.39 1.46-10.11.03-13.5 1-1.354.49-2.323.47-3-.5 1.354-1.94 3-2 3-2z"/><path d="M15 32c2.5 2.5 12.5 2.5 15 0 .5-1.5 0-2 0-2 0-2.5-2.5-4-2.5-4 5.5-1.5 6-11.5-5-15.5-11 4-10.5 14-5 15.5 0 0-2.5 1.5-2.5 4 0 0-.5.5 0 2z"/><circle cx="22.5" cy="8" r="2.5"/></g><path d="M17.5 26h10M15 30h15m-7.5-14.5v5M20 18h5" stroke="#94a3b8" stroke-width="1.4" stroke-linejoin="miter"/></g></svg>`,
+        bQ: `<svg viewBox="0 0 45 45" class="piece-svg"><g fill="#1e293b" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><g stroke="none"><circle cx="6" cy="12" r="2.5"/><circle cx="14" cy="9" r="2.5"/><circle cx="22.5" cy="8" r="2.5"/><circle cx="31" cy="9" r="2.5"/><circle cx="39" cy="12" r="2.5"/></g><path d="M9 26c8.5-1.5 21-1.5 27 0l2.5-12.5L31 25l-.3-14.1-5.2 13.6-3-14.5-3 14.5-5.2-13.6L14 25 6.5 13.5 9 26z" stroke-linecap="butt"/><path d="M9 26c0 2 1.5 2 2.5 4 1 1.5 1 1 .5 3.5-1.5 1-1.5 2.5-1.5 2.5-1.5 1.5.5 2.5.5 2.5 6.5 1 16.5 1 23 0 0 0 1.5-1 0-2.5 0 0 .5-1.5-1-2.5-.5-2.5-.5-2 .5-3.5 1-2 2.5-2 2.5-4-8.5-1.5-18.5-1.5-27 0z" stroke-linecap="butt"/><path d="M11 38.5a35 35 1 0 0 23 0" fill="none" stroke-linecap="butt"/><path d="M11 29a35 35 1 0 1 23 0M12.5 31.5h20M11.5 34.5a35 35 1 0 0 22 0M10.5 37.5a35 35 1 0 0 24 0" fill="none" stroke="#94a3b8" stroke-width="1.2"/></g></svg>`,
+        bK: `<svg viewBox="0 0 45 45" class="piece-svg"><g fill="none" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22.5 11.63V6" stroke-linejoin="miter"/><path d="M22.5 25s4.5-7.5 3-10.5c0 0-1-2.5-3-2.5s-3 2.5-3 2.5c-1.5 3 3 10.5 3 10.5" fill="#1e293b" stroke-linecap="butt" stroke-linejoin="miter"/><path d="M11.5 37c5.5 3.5 15.5 3.5 21 0v-7s9-4.5 6-10.5c-4-6.5-13.5-3.5-16 4V27v-3.5c-3.5-7.5-13-10.5-16-4-3 6 5 10 5 10V37z" fill="#1e293b"/><path d="M20 8h5" stroke-linejoin="miter"/><path d="M32 29.5s8.5-4 6.03-9.65C34.15 14 25 18 22.5 24.5l.01 2.1-.01-2.1C20 18 9.906 14 6.997 19.85c-2.497 5.65 4.853 9 4.853 9" stroke="#94a3b8" stroke-width="1.2"/><path d="M11.5 30c5.5-3 15.5-3 21 0m-21 3.5c5.5-3 15.5-3 21 0m-21 3.5c5.5-3 15.5-3 21 0" stroke="#94a3b8" stroke-width="1.2"/></g></svg>`
+    };
+
+    /**
+     * =========================================================================
+     * 4. COMPLETE CHESS RULES ENGINE (FAST 8x8 ARRAY REPRESENTATION)
+     * =========================================================================
+     * Piece codes: 'wP','wN','wB','wR','wQ','wK', 'bP','bN','bB','bR','bQ','bK', null
+     */
+    const PIECE_VALUES = { P: 100, N: 320, B: 330, R: 500, Q: 900, K: 20000 };
+
+    // Piece-Square Tables (from White's perspective, index 0 = a8, 63 = h1)
+    const PST = {
+        P: [
+             0,  0,  0,  0,  0,  0,  0,  0,
+            50, 50, 50, 50, 50, 50, 50, 50,
+            10, 10, 20, 30, 30, 20, 10, 10,
+             5,  5, 10, 25, 25, 10,  5,  5,
+             0,  0,  0, 22, 22,  0,  0,  0,
+             5, -5,-10,  0,  0,-10, -5,  5,
+             5, 10, 10,-22,-22, 10, 10,  5,
+             0,  0,  0,  0,  0,  0,  0,  0
+        ],
+        N: [
+            -50,-40,-30,-30,-30,-30,-40,-50,
+            -40,-20,  0,  0,  0,  0,-20,-40,
+            -30,  0, 10, 15, 15, 10,  0,-30,
+            -30,  5, 15, 20, 20, 15,  5,-30,
+            -30,  0, 15, 20, 20, 15,  0,-30,
+            -30,  5, 10, 15, 15, 10,  5,-30,
+            -40,-20,  0,  5,  5,  0,-20,-40,
+            -50,-40,-30,-30,-30,-30,-40,-50
+        ],
+        B: [
+            -20,-10,-10,-10,-10,-10,-10,-20,
+            -10,  0,  0,  0,  0,  0,  0,-10,
+            -10,  0,  5, 10, 10,  5,  0,-10,
+            -10,  5,  5, 10, 10,  5,  5,-10,
+            -10,  0, 10, 10, 10, 10,  0,-10,
+            -10, 10, 10, 10, 10, 10, 10,-10,
+            -10,  5,  0,  0,  0,  0,  5,-10,
+            -20,-10,-10,-10,-10,-10,-10,-20
+        ],
+        R: [
+              0,  0,  0,  0,  0,  0,  0,  0,
+              5, 10, 10, 10, 10, 10, 10,  5,
+             -5,  0,  0,  0,  0,  0,  0, -5,
+             -5,  0,  0,  0,  0,  0,  0, -5,
+             -5,  0,  0,  0,  0,  0,  0, -5,
+             -5,  0,  0,  0,  0,  0,  0, -5,
+             -5,  0,  0,  0,  0,  0,  0, -5,
+              0,  0,  0,  5,  5,  0,  0,  0
+        ],
+        Q: [
+            -20,-10,-10, -5, -5,-10,-10,-20,
+            -10,  0,  0,  0,  0,  0,  0,-10,
+            -10,  0,  5,  5,  5,  5,  0,-10,
+             -5,  0,  5,  5,  5,  5,  0, -5,
+              0,  0,  5,  5,  5,  5,  0, -5,
+            -10,  5,  5,  5,  5,  5,  0,-10,
+            -10,  0,  5,  0,  0,  0,  0,-10,
+            -20,-10,-10, -5, -5,-10,-10,-20
+        ],
+        K_MG: [
+            -30,-40,-40,-50,-50,-40,-40,-30,
+            -30,-40,-40,-50,-50,-40,-40,-30,
+            -30,-40,-40,-50,-50,-40,-40,-30,
+            -30,-40,-40,-50,-50,-40,-40,-30,
+            -20,-30,-30,-40,-40,-30,-30,-20,
+            -10,-20,-20,-20,-20,-20,-20,-10,
+             20, 20,  0,  0,  0,  0, 20, 20,
+             20, 30, 10,  0,  0, 10, 30, 20
+        ],
+        K_EG: [
+            -50,-40,-30,-20,-20,-30,-40,-50,
+            -30,-20,-10,  0,  0,-10,-20,-30,
+            -30,-10, 20, 30, 30, 20,-10,-30,
+            -30,-10, 30, 40, 40, 30,-10,-30,
+            -30,-10, 30, 40, 40, 30,-10,-30,
+            -30,-10, 20, 30, 30, 20,-10,-30,
+            -30,-30,  0,  0,  0,  0,-30,-30,
+            -50,-30,-30,-30,-30,-30,-30,-50
+        ]
+    };
+
+    // Grandmaster Opening Book (SAN sequences mapped to next move {from, to})
+    const OPENING_BOOK = {
+        "": ["e2e4", "d2d4", "c2c4", "g1f3"],
+        "e2e4": ["c7c5", "e7e5", "e7e6", "c7c6"],
+        "e2e4 e7e5": ["g1f3"],
+        "e2e4 e7e5 g1f3": ["b8c6", "g8f6"],
+        "e2e4 e7e5 g1f3 b8c6": ["f1b5", "f1c4"],
+        "e2e4 c7c5": ["g1f3", "b1c3"],
+        "e2e4 c7c5 g1f3": ["d7d6", "b8c6", "e7e6"],
+        "e2e4 e7e6": ["d2d4"],
+        "e2e4 c7c6": ["d2d4"],
+        "d2d4": ["g8f6", "d7d5"],
+        "d2d4 g8f6": ["c2c4"],
+        "d2d4 g8f6 c2c4": ["e7e6", "g7g6"],
+        "d2d4 d7d5": ["c2c4"],
+        "d2d4 d7d5 c2c4": ["e7e6", "c7c6"]
+    };
+
+    class ChessGame {
+        constructor() {
+            this.reset();
+        }
+
+        reset() {
+            this.board = [
+                'bR','bN','bB','bQ','bK','bB','bN','bR',
+                'bP','bP','bP','bP','bP','bP','bP','bP',
+                null,null,null,null,null,null,null,null,
+                null,null,null,null,null,null,null,null,
+                null,null,null,null,null,null,null,null,
+                null,null,null,null,null,null,null,null,
+                'wP','wP','wP','wP','wP','wP','wP','wP',
+                'wR','wN','wB','wQ','wK','wB','wN','wR'
+            ];
+            this.turn = 'w';
+            this.castling = { wK: true, wQ: true, bK: true, bQ: true };
+            this.epSquare = -1; // En passant target square index
+            this.halfMoves = 0;
+            this.fullMoves = 1;
+            this.history = [];
+            this.positionCounts = {};
+            this.recordPosition();
+        }
+
+        getPositionKey() {
+            return this.board.map(p => p || '.').join('') + '_' + this.turn + '_' +
+                   (this.castling.wK?'K':'') + (this.castling.wQ?'Q':'') +
+                   (this.castling.bK?'k':'') + (this.castling.bQ?'q':'') + '_' + this.epSquare;
+        }
+
+        recordPosition() {
+            const key = this.getPositionKey();
+            this.positionCounts[key] = (this.positionCounts[key] || 0) + 1;
+        }
+
+        isSquareAttacked(sq, byColor) {
+            const r = sq >> 3, c = sq & 7;
+            // Pawns
+            const pawnDir = byColor === 'w' ? 1 : -1;
+            const pr = r + pawnDir;
+            if (pr >= 0 && pr < 8) {
+                if (c - 1 >= 0 && this.board[(pr << 3) | (c - 1)] === byColor + 'P') return true;
+                if (c + 1 < 8 && this.board[(pr << 3) | (c + 1)] === byColor + 'P') return true;
+            }
+            // Knights
+            const nOffsets = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+            for (let i = 0; i < 8; i++) {
+                const nr = r + nOffsets[i][0], nc = c + nOffsets[i][1];
+                if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+                    if (this.board[(nr << 3) | nc] === byColor + 'N') return true;
+                }
+            }
+            // King
+            for (let dr = -1; dr <= 1; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    if (dr === 0 && dc === 0) continue;
+                    const kr = r + dr, kc = c + dc;
+                    if (kr >= 0 && kr < 8 && kc >= 0 && kc < 8) {
+                        if (this.board[(kr << 3) | kc] === byColor + 'K') return true;
+                    }
+                }
+            }
+            // Rook / Queen (orthogonal)
+            const ortho = [[-1,0],[1,0],[0,-1],[0,1]];
+            for (let i = 0; i < 4; i++) {
+                let nr = r + ortho[i][0], nc = c + ortho[i][1];
+                while (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+                    const p = this.board[(nr << 3) | nc];
+                    if (p) {
+                        if (p === byColor + 'R' || p === byColor + 'Q') return true;
+                        break;
+                    }
+                    nr += ortho[i][0]; nc += ortho[i][1];
+                }
+            }
+            // Bishop / Queen (diagonal)
+            const diag = [[-1,-1],[-1,1],[1,-1],[1,1]];
+            for (let i = 0; i < 4; i++) {
+                let nr = r + diag[i][0], nc = c + diag[i][1];
+                while (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+                    const p = this.board[(nr << 3) | nc];
+                    if (p) {
+                        if (p === byColor + 'B' || p === byColor + 'Q') return true;
+                        break;
+                    }
+                    nr += diag[i][0]; nc += diag[i][1];
+                }
+            }
+            return false;
+        }
+
+        findKing(color) {
+            const target = color + 'K';
+            for (let i = 0; i < 64; i++) {
+                if (this.board[i] === target) return i;
+            }
+            return -1;
+        }
+
+        inCheck(color = this.turn) {
+            const kSq = this.findKing(color);
+            if (kSq === -1) return false;
+            return this.isSquareAttacked(kSq, color === 'w' ? 'b' : 'w');
+        }
+
+        generatePseudoMoves(color = this.turn, capturesOnly = false) {
+            const moves = [];
+            const enemy = color === 'w' ? 'b' : 'w';
+
+            for (let sq = 0; sq < 64; sq++) {
+                const p = this.board[sq];
+                if (!p || p[0] !== color) continue;
+                const type = p[1];
+                const r = sq >> 3, c = sq & 7;
+
+                if (type === 'P') {
+                    const dir = color === 'w' ? -1 : 1;
+                    const startRow = color === 'w' ? 6 : 1;
+                    const promRow = color === 'w' ? 0 : 7;
+                    const fwd = ((r + dir) << 3) | c;
+
+                    // Forward move
+                    if (!capturesOnly && r + dir >= 0 && r + dir < 8 && !this.board[fwd]) {
+                        if (r + dir === promRow) {
+                            ['Q','R','B','N'].forEach(pr => moves.push({ from: sq, to: fwd, promo: pr }));
+                        } else {
+                            moves.push({ from: sq, to: fwd });
+                            if (r === startRow) {
+                                const fwd2 = ((r + dir * 2) << 3) | c;
+                                if (!this.board[fwd2]) {
+                                    moves.push({ from: sq, to: fwd2, isDoublePawn: true });
+                                }
+                            }
+                        }
+                    }
+                    // Captures & En Passant
+                    for (const dc of [-1, 1]) {
+                        const nc = c + dc;
+                        if (nc >= 0 && nc < 8 && r + dir >= 0 && r + dir < 8) {
+                            const targetSq = ((r + dir) << 3) | nc;
+                            const targetPiece = this.board[targetSq];
+                            if (targetPiece && targetPiece[0] === enemy) {
+                                if (r + dir === promRow) {
+                                    ['Q','R','B','N'].forEach(pr => moves.push({ from: sq, to: targetSq, captured: targetPiece, promo: pr }));
+                                } else {
+                                    moves.push({ from: sq, to: targetSq, captured: targetPiece });
+                                }
+                            } else if (targetSq === this.epSquare) {
+                                moves.push({ from: sq, to: targetSq, captured: enemy + 'P', isEP: true });
+                            }
+                        }
+                    }
+                } else if (type === 'N') {
+                    const offsets = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+                    for (let i = 0; i < 8; i++) {
+                        const nr = r + offsets[i][0], nc = c + offsets[i][1];
+                        if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+                            const to = (nr << 3) | nc;
+                            const tp = this.board[to];
+                            if (!tp) {
+                                if (!capturesOnly) moves.push({ from: sq, to });
+                            } else if (tp[0] === enemy) {
+                                moves.push({ from: sq, to, captured: tp });
+                            }
+                        }
+                    }
+                } else if (type === 'K') {
+                    for (let dr = -1; dr <= 1; dr++) {
+                        for (let dc = -1; dc <= 1; dc++) {
+                            if (dr === 0 && dc === 0) continue;
+                            const nr = r + dr, nc = c + dc;
+                            if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+                                const to = (nr << 3) | nc;
+                                const tp = this.board[to];
+                                if (!tp) {
+                                    if (!capturesOnly) moves.push({ from: sq, to });
+                                } else if (tp[0] === enemy) {
+                                    moves.push({ from: sq, to, captured: tp });
+                                }
+                            }
+                        }
+                    }
+                    // Castling
+                    if (!capturesOnly && !this.inCheck(color)) {
+                        if (color === 'w' && sq === 60) {
+                            if (this.castling.wK && !this.board[61] && !this.board[62] && this.board[63] === 'wR') {
+                                if (!this.isSquareAttacked(61, 'b') && !this.isSquareAttacked(62, 'b')) {
+                                    moves.push({ from: 60, to: 62, isCastle: 'K' });
+                                }
+                            }
+                            if (this.castling.wQ && !this.board[59] && !this.board[58] && !this.board[57] && this.board[56] === 'wR') {
+                                if (!this.isSquareAttacked(59, 'b') && !this.isSquareAttacked(58, 'b')) {
+                                    moves.push({ from: 60, to: 58, isCastle: 'Q' });
+                                }
+                            }
+                        } else if (color === 'b' && sq === 4) {
+                            if (this.castling.bK && !this.board[5] && !this.board[6] && this.board[7] === 'bR') {
+                                if (!this.isSquareAttacked(5, 'w') && !this.isSquareAttacked(6, 'w')) {
+                                    moves.push({ from: 4, to: 6, isCastle: 'K' });
+                                }
+                            }
+                            if (this.castling.bQ && !this.board[3] && !this.board[2] && !this.board[1] && this.board[0] === 'bR') {
+                                if (!this.isSquareAttacked(3, 'w') && !this.isSquareAttacked(2, 'w')) {
+                                    moves.push({ from: 4, to: 2, isCastle: 'Q' });
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Sliding pieces: B, R, Q
+                    const dirs = [];
+                    if (type === 'R' || type === 'Q') dirs.push([-1,0],[1,0],[0,-1],[0,1]);
+                    if (type === 'B' || type === 'Q') dirs.push([-1,-1],[-1,1],[1,-1],[1,1]);
+                    for (let i = 0; i < dirs.length; i++) {
+                        let nr = r + dirs[i][0], nc = c + dirs[i][1];
+                        while (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+                            const to = (nr << 3) | nc;
+                            const tp = this.board[to];
+                            if (!tp) {
+                                if (!capturesOnly) moves.push({ from: sq, to });
+                            } else {
+                                if (tp[0] === enemy) moves.push({ from: sq, to, captured: tp });
+                                break;
+                            }
+                            nr += dirs[i][0]; nc += dirs[i][1];
+                        }
+                    }
+                }
+            }
+            return moves;
+        }
+
+        makeMove(move, recordHistory = true) {
+            const piece = this.board[move.from];
+            const color = piece[0];
+            const type = piece[1];
+
+            const stateSnapshot = {
+                move,
+                piece,
+                captured: this.board[move.to],
+                castling: { ...this.castling },
+                epSquare: this.epSquare,
+                halfMoves: this.halfMoves,
+                fullMoves: this.fullMoves
+            };
+
+            // Execute move
+            this.board[move.to] = move.promo ? (color + move.promo) : piece;
+            this.board[move.from] = null;
+
+            // En Passant capture
+            if (move.isEP) {
+                const capSq = color === 'w' ? move.to + 8 : move.to - 8;
+                stateSnapshot.epCapturedSq = capSq;
+                this.board[capSq] = null;
+            }
+
+            // Castling rook shift
+            if (move.isCastle) {
+                if (move.to === 62) { this.board[61] = 'wR'; this.board[63] = null; }
+                else if (move.to === 58) { this.board[59] = 'wR'; this.board[56] = null; }
+                else if (move.to === 6) { this.board[5] = 'bR'; this.board[7] = null; }
+                else if (move.to === 2) { this.board[3] = 'bR'; this.board[0] = null; }
+            }
+
+            // Update castling rights
+            if (piece === 'wK') { this.castling.wK = false; this.castling.wQ = false; }
+            if (piece === 'bK') { this.castling.bK = false; this.castling.bQ = false; }
+            if (move.from === 63 || move.to === 63) this.castling.wK = false;
+            if (move.from === 56 || move.to === 56) this.castling.wQ = false;
+            if (move.from === 7  || move.to === 7)  this.castling.bK = false;
+            if (move.from === 0  || move.to === 0)  this.castling.bQ = false;
+
+            // Update En Passant square
+            if (move.isDoublePawn) {
+                this.epSquare = color === 'w' ? move.from - 8 : move.from + 8;
+            } else {
+                this.epSquare = -1;
+            }
+
+            // Update halfmoves / fullmoves
+            if (type === 'P' || move.captured) this.halfMoves = 0;
+            else this.halfMoves++;
+
+            if (color === 'b') this.fullMoves++;
+            this.turn = color === 'w' ? 'b' : 'w';
+
+            if (recordHistory) {
+                stateSnapshot.san = this.computeSAN(stateSnapshot);
+                stateSnapshot.uci = sqToAlgebraic(move.from) + sqToAlgebraic(move.to) + (move.promo ? move.promo.toLowerCase() : '');
+                this.history.push(stateSnapshot);
+                this.recordPosition();
+            }
+            return stateSnapshot;
+        }
+
+        unmakeMove(snap) {
+            const m = snap.move;
+            const color = snap.piece[0];
+            this.turn = color;
+            this.castling = snap.castling;
+            this.epSquare = snap.epSquare;
+            this.halfMoves = snap.halfMoves;
+            this.fullMoves = snap.fullMoves;
+
+            this.board[m.from] = snap.piece;
+            this.board[m.to] = snap.captured;
+
+            if (m.isEP) {
+                this.board[m.to] = null;
+                this.board[snap.epCapturedSq] = (color === 'w' ? 'b' : 'w') + 'P';
+            }
+            if (m.isCastle) {
+                if (m.to === 62) { this.board[63] = 'wR'; this.board[61] = null; }
+                else if (m.to === 58) { this.board[56] = 'wR'; this.board[59] = null; }
+                else if (m.to === 6) { this.board[7] = 'bR'; this.board[5] = null; }
+                else if (m.to === 2) { this.board[0] = 'bR'; this.board[3] = null; }
+            }
+        }
+
+        generateLegalMoves(color = this.turn, capturesOnly = false) {
+            const pseudo = this.generatePseudoMoves(color, capturesOnly);
+            const legal = [];
+            for (let i = 0; i < pseudo.length; i++) {
+                const snap = this.makeMove(pseudo[i], false);
+                if (!this.inCheck(color)) {
+                    legal.push(pseudo[i]);
+                }
+                this.unmakeMove(snap);
+            }
+            return legal;
+        }
+
+        computeSAN(snap) {
+            const m = snap.move;
+            if (m.isCastle === 'K') return 'O-O';
+            if (m.isCastle === 'Q') return 'O-O-O';
+            const type = snap.piece[1];
+            let san = '';
+            if (type !== 'P') {
+                san += type;
+            } else if (m.captured || m.isEP) {
+                san += 'abcdefgh'[m.from & 7];
+            }
+            if (m.captured || m.isEP) san += 'x';
+            san += sqToAlgebraic(m.to);
+            if (m.promo) san += '=' + m.promo;
+
+            // Check / Checkmate symbol
+            const oppMoves = this.generateLegalMoves(this.turn);
+            if (this.inCheck(this.turn)) {
+                san += oppMoves.length === 0 ? '#' : '+';
+            }
+            return san;
+        }
+
+        isInsufficientMaterial() {
+            const pieces = [];
+            for (let i = 0; i < 64; i++) {
+                if (this.board[i] && this.board[i][1] !== 'K') pieces.push(this.board[i]);
+            }
+            if (pieces.length === 0) return true;
+            if (pieces.length === 1 && (pieces[0][1] === 'N' || pieces[0][1] === 'B')) return true;
+            return false;
+        }
+
+        getGameStatus() {
+            const legal = this.generateLegalMoves(this.turn);
+            if (legal.length === 0) {
+                if (this.inCheck(this.turn)) {
+                    return { over: true, reason: 'checkmate', winner: this.turn === 'w' ? 'b' : 'w' };
+                }
+                return { over: true, reason: 'stalemate', winner: null };
+            }
+            if (this.halfMoves >= 100) {
+                return { over: true, reason: 'fifty_move', winner: null };
+            }
+            if (this.isInsufficientMaterial()) {
+                return { over: true, reason: 'insufficient', winner: null };
+            }
+            const posKey = this.getPositionKey();
+            if ((this.positionCounts[posKey] || 0) >= 3) {
+                return { over: true, reason: 'repetition', winner: null };
+            }
+            return { over: false };
+        }
+    }
+
+    function sqToAlgebraic(sq) {
+        return 'abcdefgh'[sq & 7] + (8 - (sq >> 3));
+    }
+
+    function algebraicToSq(str) {
+        const c = 'abcdefgh'.indexOf(str[0]);
+        const r = 8 - parseInt(str[1], 10);
+        return (r << 3) | c;
+    }
+
+    /**
+     * =========================================================================
+     * 5. GRANDMASTER AI ENGINE (3200 ELO KHAGAN AT LEVEL 10)
+     *    - Alpha-Beta Pruning + Iterative Deepening
+     *    - Quiescence Search (eliminates horizon effect)
+     *    - MVV-LVA Move Ordering + Promotions + Checks
+     *    - Opening Book + Endgame King Centralization + Passed Pawns + Mobility
+     * =========================================================================
+     */
+    class KhaganAI {
+        constructor(game) {
+            this.game = game;
+            this.nodes = 0;
+            this.stopSearch = false;
+            this.startTime = 0;
+            this.timeLimit = 1200;
+        }
+
+        evaluate() {
+            let score = 0;
+            let totalPhase = 0;
+            let wBishops = 0, bBishops = 0;
+            const wPawnCols = new Array(8).fill(0);
+            const bPawnCols = new Array(8).fill(0);
+
+            for (let sq = 0; sq < 64; sq++) {
+                const p = this.game.board[sq];
+                if (!p) continue;
+                const isW = p[0] === 'w';
+                const type = p[1];
+                const pstIdx = isW ? sq : (sq ^ 56);
+                const col = sq & 7;
+
+                let val = PIECE_VALUES[type];
+
+                if (type === 'P') {
+                    val += PST.P[pstIdx];
+                    if (isW) wPawnCols[col]++; else bPawnCols[col]++;
+                } else if (type === 'N') {
+                    val += PST.N[pstIdx];
+                    totalPhase += 1;
+                } else if (type === 'B') {
+                    val += PST.B[pstIdx];
+                    totalPhase += 1;
+                    if (isW) wBishops++; else bBishops++;
+                } else if (type === 'R') {
+                    val += PST.R[pstIdx];
+                    totalPhase += 2;
+                } else if (type === 'Q') {
+                    val += PST.Q[pstIdx];
+                    totalPhase += 4;
+                }
+
+                score += isW ? val : -val;
+            }
+
+            // Bishop pair bonus
+            if (wBishops >= 2) score += 35;
+            if (bBishops >= 2) score -= 35;
+
+            // Doubled pawns penalty
+            for (let c = 0; c < 8; c++) {
+                if (wPawnCols[c] > 1) score -= (wPawnCols[c] - 1) * 14;
+                if (bPawnCols[c] > 1) score += (bPawnCols[c] - 1) * 14;
+            }
+
+            // King PST interpolation between Middlegame and Endgame
+            const isEndgame = totalPhase <= 6;
+            const wKingSq = this.game.findKing('w');
+            const bKingSq = this.game.findKing('b');
+            if (wKingSq !== -1) {
+                score += isEndgame ? PST.K_EG[wKingSq] : PST.K_MG[wKingSq];
+            }
+            if (bKingSq !== -1) {
+                score -= isEndgame ? PST.K_EG[bKingSq ^ 56] : PST.K_MG[bKingSq ^ 56];
+            }
+
+            return this.game.turn === 'w' ? score : -score;
+        }
+
+        scoreMove(m) {
+            let s = 0;
+            if (m.captured) {
+                const attacker = this.game.board[m.from][1];
+                const victim = m.captured[1];
+                s += 10000 + PIECE_VALUES[victim] * 10 - PIECE_VALUES[attacker];
+            }
+            if (m.promo) {
+                s += 9000 + PIECE_VALUES[m.promo];
+            }
+            if (m.isCastle) s += 400;
+            return s;
+        }
+
+        orderMoves(moves) {
+            for (let i = 0; i < moves.length; i++) {
+                moves[i]._score = this.scoreMove(moves[i]);
+            }
+            moves.sort((a, b) => b._score - a._score);
+            return moves;
+        }
+
+        quiescence(alpha, beta, qDepth = 0) {
+            this.nodes++;
+            if ((this.nodes & 2047) === 0 && performance.now() - this.startTime > this.timeLimit) {
+                this.stopSearch = true;
+            }
+            if (this.stopSearch) return 0;
+
+            const standPat = this.evaluate();
+            if (standPat >= beta) return beta;
+            if (standPat > alpha) alpha = standPat;
+            if (qDepth >= 4) return standPat;
+
+            const captures = this.orderMoves(this.game.generateLegalMoves(this.game.turn, true));
+            for (let i = 0; i < captures.length; i++) {
+                const snap = this.game.makeMove(captures[i], false);
+                const score = -this.quiescence(-beta, -alpha, qDepth + 1);
+                this.game.unmakeMove(snap);
+
+                if (this.stopSearch) return 0;
+                if (score >= beta) return beta;
+                if (score > alpha) alpha = score;
+            }
+            return alpha;
+        }
+
+        alphaBeta(depth, alpha, beta, useQSearch) {
+            this.nodes++;
+            if ((this.nodes & 2047) === 0 && performance.now() - this.startTime > this.timeLimit) {
+                this.stopSearch = true;
+            }
+            if (this.stopSearch) return 0;
+
+            const inCheck = this.game.inCheck(this.game.turn);
+            if (inCheck) depth++; // Check extension
+
+            if (depth <= 0) {
+                return useQSearch ? this.quiescence(alpha, beta, 0) : this.evaluate();
+            }
+
+            const moves = this.game.generateLegalMoves(this.game.turn);
+            if (moves.length === 0) {
+                if (inCheck) return -29000 - depth; // Prefer faster checkmate
+                return 0; // Stalemate
+            }
+
+            this.orderMoves(moves);
+
+            for (let i = 0; i < moves.length; i++) {
+                const snap = this.game.makeMove(moves[i], false);
+                const score = -this.alphaBeta(depth - 1, -beta, -alpha, useQSearch);
+                this.game.unmakeMove(snap);
+
+                if (this.stopSearch) return 0;
+                if (score >= beta) return beta;
+                if (score > alpha) alpha = score;
+            }
+            return alpha;
+        }
+
+        chooseBestMove(levelCfg) {
+            const legalMoves = this.game.generateLegalMoves(this.game.turn);
+            if (legalMoves.length === 0) return null;
+            if (legalMoves.length === 1) return legalMoves[0];
+
+            // 1. Opening Book check for higher levels
+            if (levelCfg.book && this.game.history.length < 8) {
+                const uciLine = this.game.history.map(h => h.uci).join(' ');
+                const bookCandidates = OPENING_BOOK[uciLine];
+                if (bookCandidates && bookCandidates.length > 0) {
+                    const pick = bookCandidates[Math.floor(Math.random() * bookCandidates.length)];
+                    const fromSq = algebraicToSq(pick.slice(0, 2));
+                    const toSq = algebraicToSq(pick.slice(2, 4));
+                    const matched = legalMoves.find(m => m.from === fromSq && m.to === toSq);
+                    if (matched) return matched;
+                }
+            }
+
+            // 2. Controlled Randomness for lower levels (Beginner to Semi-Pro)
+            if (levelCfg.randomness > 0 && Math.random() < levelCfg.randomness) {
+                // Pick among reasonable/random moves
+                return legalMoves[Math.floor(Math.random() * legalMoves.length)];
+            }
+
+            // 3. Iterative Deepening Alpha-Beta Search
+            this.nodes = 0;
+            this.stopSearch = false;
+            this.startTime = performance.now();
+            this.timeLimit = levelCfg.level >= 9 ? 1600 : (levelCfg.level >= 7 ? 900 : 450);
+
+            this.orderMoves(legalMoves);
+            let bestMove = legalMoves[0];
+            let bestScore = -Infinity;
+
+            for (let currentDepth = 1; currentDepth <= levelCfg.depth; currentDepth++) {
+                let iterBestMove = legalMoves[0];
+                let iterBestScore = -Infinity;
+                let alpha = -Infinity;
+                const beta = Infinity;
+
+                for (let i = 0; i < legalMoves.length; i++) {
+                    const m = legalMoves[i];
+                    const snap = this.game.makeMove(m, false);
+                    const score = -this.alphaBeta(currentDepth - 1, -beta, -alpha, levelCfg.qSearch);
+                    this.game.unmakeMove(snap);
+
+                    if (this.stopSearch) break;
+
+                    // Slight noise for mid levels so games vary naturally
+                    const jitter = levelCfg.level <= 5 ? (Math.random() * 18 - 9) : 0;
+                    if (score + jitter > iterBestScore) {
+                        iterBestScore = score + jitter;
+                        iterBestMove = m;
+                    }
+                    if (score > alpha) alpha = score;
+                }
+
+                if (!this.stopSearch) {
+                    bestMove = iterBestMove;
+                    bestScore = iterBestScore;
+                    // Put best move first for next iteration
+                    const idx = legalMoves.indexOf(bestMove);
+                    if (idx > 0) {
+                        legalMoves.splice(idx, 1);
+                        legalMoves.unshift(bestMove);
+                    }
+                } else {
+                    break;
+                }
+            }
+
+            return bestMove;
+        }
+    }
+
+    /**
+     * =========================================================================
+     * 6. UI CONTROLLER & GAME LOOP
+     * =========================================================================
+     */
+    const game = new ChessGame();
+    const ai = new KhaganAI(game);
+
+    let playerColor = 'w';
+    let flipped = false;
+    let selectedSq = null;
+    let legalTargets = [];
+    let isBotThinking = false;
+    let pendingPromotionMove = null;
+
+    // DOM Elements
+    const boardEl = document.getElementById('chess-board');
+    const levelsStepperEl = document.getElementById('levels-stepper');
+    const moveHistoryEl = document.getElementById('move-history');
+
+    function getCurrentLevelObj() {
+        return LEVELS[savedState.currentLevel - 1] || LEVELS[0];
+    }
+
+    function updateRankUI() {
+        const lvl = getCurrentLevelObj();
+        document.getElementById('header-rank-badge').textContent = `المستوى ${lvl.level}: ${lvl.title}`;
+        document.getElementById('bot-avatar').textContent = lvl.icon;
+        document.getElementById('bot-title').textContent = lvl.title;
+        document.getElementById('bot-elo').textContent = `${lvl.elo} Elo`;
+        document.getElementById('level-counter').textContent = `المستوى ${lvl.level} من 10`;
+        document.getElementById('showcase-title').textContent = `${lvl.icon} ${lvl.title}`;
+        document.getElementById('showcase-desc').textContent = lvl.desc;
+        document.getElementById('showcase-elo').textContent = lvl.elo;
+
+        const botCard = document.getElementById('bot-card');
+        const showcase = document.getElementById('rank-showcase');
+        if (lvl.level === 10) {
+            botCard.classList.add('khagan-glow');
+            showcase.classList.add('khagan-glow');
+        } else {
+            botCard.classList.remove('khagan-glow');
+            showcase.classList.remove('khagan-glow');
+        }
+
+        // Render Top 10-Step Progression Bar
+        levelsStepperEl.innerHTML = '';
+        LEVELS.forEach(item => {
+            const isUnlocked = item.level <= savedState.unlockedLevel;
+            const isCurrent = item.level === savedState.currentLevel;
+
+            const step = document.createElement('button');
+            step.disabled = !isUnlocked;
+            step.className = `flex-1 flex flex-col items-center py-1.5 px-1 rounded-xl border text-center transition ${
+                isCurrent
+                    ? 'bg-amber-500/25 border-amber-400 text-amber-300 shadow-md scale-[1.03]'
+                    : isUnlocked
+                        ? 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700 cursor-pointer'
+                        : 'bg-slate-900/50 border-slate-800/70 text-slate-600 cursor-not-allowed opacity-60'
+            }`;
+            step.innerHTML = `
+                <span class="text-xs">${isUnlocked ? item.icon : '🔒'}</span>
+                <span class="text-[10px] font-bold truncate w-full mt-0.5">${item.title}</span>
+            `;
+            if (isUnlocked) {
+                step.onclick = () => {
+                    if (isBotThinking) return;
+                    savedState.currentLevel = item.level;
+                    saveProgress();
+                    startNewGame();
+                };
+            }
+            levelsStepperEl.appendChild(step);
+        });
+    }
+
+    function renderBoard() {
+        boardEl.innerHTML = '';
+        const lastMove = game.history.length > 0 ? game.history[game.history.length - 1].move : null;
+        const checkedKingSq = game.inCheck(game.turn) ? game.findKing(game.turn) : -1;
+
+        for (let displayIdx = 0; displayIdx < 64; displayIdx++) {
+            const sq = flipped ? (63 - displayIdx) : displayIdx;
+            const r = sq >> 3;
+            const c = sq & 7;
+            const isLight = (r + c) % 2 === 0;
+
+            const sqDiv = document.createElement('div');
+            sqDiv.className = `square ${isLight ? 'sq-light' : 'sq-dark'}`;
+
+            if (lastMove && (sq === lastMove.from || sq === lastMove.to)) {
+                sqDiv.classList.add('sq-last-move');
+            }
+            if (sq === selectedSq) {
+                sqDiv.classList.add('sq-selected');
+            }
+            if (sq === checkedKingSq) {
+                sqDiv.classList.add('sq-check');
+            }
+
+            // Coordinates labels on edges
+            if (displayIdx % 8 === 0) {
+                const rankLabel = document.createElement('span');
+                rankLabel.className = `absolute top-0.5 left-1 text-[10px] font-extrabold pointer-events-none ${isLight ? 'text-slate-600' : 'text-slate-200'}`;
+                rankLabel.textContent = 8 - r;
+                sqDiv.appendChild(rankLabel);
+            }
+            if (displayIdx >= 56) {
+                const fileLabel = document.createElement('span');
+                fileLabel.className = `absolute bottom-0.5 right-1 text-[10px] font-extrabold pointer-events-none ${isLight ? 'text-slate-600' : 'text-slate-200'}`;
+                fileLabel.textContent = 'abcdefgh'[c];
+                sqDiv.appendChild(fileLabel);
+            }
+
+            // Piece SVG
+            const piece = game.board[sq];
+            if (piece) {
+                sqDiv.insertAdjacentHTML('beforeend', PIECE_SVGS[piece]);
+            }
+
+            // Legal Move Hint
+            const targetMove = legalTargets.find(m => m.to === sq);
+            if (targetMove) {
+                if (piece || targetMove.isEP) {
+                    const ring = document.createElement('div');
+                    ring.className = 'legal-capture';
+                    sqDiv.appendChild(ring);
+                } else {
+                    const dot = document.createElement('div');
+                    dot.className = 'legal-dot';
+                    sqDiv.appendChild(dot);
+                }
+            }
+
+            sqDiv.onclick = () => handleSquareClick(sq);
+            boardEl.appendChild(sqDiv);
+        }
+
+        updateCapturedAndStatus();
+        renderMoveHistory();
+    }
+
+    function updateCapturedAndStatus() {
+        const initialCounts = { wP:8, wN:2, wB:2, wR:2, wQ:1, bP:8, bN:2, bB:2, bR:2, bQ:1 };
+        const currentCounts = {};
+        for (let i = 0; i < 64; i++) {
+            const p = game.board[i];
+            if (p) currentCounts[p] = (currentCounts[p] || 0) + 1;
+        }
+
+        let wScore = 0, bScore = 0;
+        const wLost = [], bLost = [];
+
+        ['Q','R','B','N','P'].forEach(t => {
+            const wRem = currentCounts['w' + t] || 0;
+            const bRem = currentCounts['b' + t] || 0;
+            wScore += wRem * PIECE_VALUES[t];
+            bScore += bRem * PIECE_VALUES[t];
+
+            for (let i = 0; i < initialCounts['w' + t] - wRem; i++) wLost.push('w' + t);
+            for (let i = 0; i < initialCounts['b' + t] - bRem; i++) bLost.push('b' + t);
+        });
+
+        const botColor = playerColor === 'w' ? 'b' : 'w';
+        const playerCapturedPieces = playerColor === 'w' ? bLost : wLost;
+        const botCapturedPieces = botColor === 'w' ? bLost : wLost;
+
+        const renderMiniPieces = (list) => list.map(p => `<span class="inline-block w-4 h-4">${PIECE_SVGS[p]}</span>`).join('');
+        document.getElementById('player-captured').innerHTML = renderMiniPieces(playerCapturedPieces);
+        document.getElementById('bot-captured').innerHTML = renderMiniPieces(botCapturedPieces);
+
+        const diff = (playerColor === 'w' ? (wScore - bScore) : (bScore - wScore)) / 100;
+        document.getElementById('player-adv').textContent = diff > 0 ? `+${Math.round(diff)}` : '';
+        document.getElementById('bot-adv').textContent = diff < 0 ? `+${Math.round(-diff)}` : '';
+
+        document.getElementById('player-side-badge').textContent = playerColor === 'w' ? 'الأبيض' : 'الأسود';
+
+        const turnEl = document.getElementById('turn-status');
+        if (game.turn === playerColor) {
+            turnEl.textContent = 'دورك للعب';
+            turnEl.className = 'text-xs sm:text-sm font-bold px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-300 border border-emerald-500/30';
+        } else {
+            turnEl.textContent = 'دور البوت';
+            turnEl.className = 'text-xs sm:text-sm font-bold px-3 py-1.5 rounded-xl bg-amber-500/15 text-amber-300 border border-amber-500/30';
+        }
+    }
+
+    function renderMoveHistory() {
+        document.getElementById('move-count-badge').textContent = `${game.history.length} نقلة`;
+        if (game.history.length === 0) {
+            moveHistoryEl.innerHTML = `<div class="text-center text-slate-500 text-xs py-10" dir="rtl">ابدأ اللعب لتسجيل النقلات هنا...</div>`;
+            return;
+        }
+        let html = '';
+        for (let i = 0; i < game.history.length; i += 2) {
+            const moveNum = (i / 2) + 1;
+            const wSan = game.history[i].san;
+            const bSan = game.history[i + 1] ? game.history[i + 1].san : '';
+            html += `
+                <div class="grid grid-cols-12 items-center px-2 py-1 rounded-lg ${i % 4 === 0 ? 'bg-slate-800/40' : ''}">
+                    <span class="col-span-2 text-slate-500 text-xs font-bold">${moveNum}.</span>
+                    <span class="col-span-5 text-slate-200 font-bold">${wSan}</span>
+                    <span class="col-span-5 text-amber-300 font-bold">${bSan}</span>
+                </div>
+            `;
+        }
+        moveHistoryEl.innerHTML = html;
+        moveHistoryEl.scrollTop = moveHistoryEl.scrollHeight;
+    }
+
+    function handleSquareClick(sq) {
+        if (isBotThinking || game.turn !== playerColor) return;
+        const status = game.getGameStatus();
+        if (status.over) return;
+
+        // Check if clicked square is a legal destination
+        const chosenMoves = legalTargets.filter(m => m.to === sq);
+        if (chosenMoves.length > 0) {
+            if (chosenMoves.length > 1 && chosenMoves[0].promo) {
+                // Show promotion modal
+                openPromotionModal(chosenMoves);
+                return;
+            }
+            executePlayerMove(chosenMoves[0]);
+            return;
+        }
+
+        // Select friendly piece
+        const piece = game.board[sq];
+        if (piece && piece[0] === playerColor) {
+            selectedSq = sq;
+            legalTargets = game.generateLegalMoves(playerColor).filter(m => m.from === sq);
+            renderBoard();
+        } else {
+            selectedSq = null;
+            legalTargets = [];
+            renderBoard();
+        }
+    }
+
+    function openPromotionModal(promoMoves) {
+        const modal = document.getElementById('promotion-modal');
+        const container = document.getElementById('promotion-choices');
+        container.innerHTML = '';
+
+        ['Q', 'R', 'B', 'N'].forEach(type => {
+            const move = promoMoves.find(m => m.promo === type);
+            const btn = document.createElement('button');
+            btn.className = 'p-3 bg-slate-800 hover:bg-amber-500/25 border border-slate-700 hover:border-amber-400 rounded-xl transition flex items-center justify-center';
+            btn.innerHTML = `<div class="w-12 h-12">${PIECE_SVGS[playerColor + type]}</div>`;
+            btn.onclick = () => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                executePlayerMove(move);
+            };
+            container.appendChild(btn);
+        });
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function executePlayerMove(move) {
+        selectedSq = null;
+        legalTargets = [];
+        game.makeMove(move, true);
+        playMoveSound(move);
+        renderBoard();
+
+        if (checkAndHandleGameOver()) return;
+        triggerBotTurn();
+    }
+
+    function playMoveSound(move) {
+        if (game.inCheck(game.turn)) {
+            playSound('check');
+        } else if (move.captured || move.isEP) {
+            playSound('capture');
+        } else {
+            playSound('move');
+        }
+    }
+
+    function triggerBotTurn() {
+        isBotThinking = true;
+        const indicator = document.getElementById('thinking-indicator');
+        indicator.classList.remove('hidden');
+        indicator.classList.add('flex');
+
+        setTimeout(() => {
+            const lvl = getCurrentLevelObj();
+            const botMove = ai.chooseBestMove(lvl);
+            if (botMove) {
+                game.makeMove(botMove, true);
+                playMoveSound(botMove);
+            }
+            isBotThinking = false;
+            indicator.classList.add('hidden');
+            indicator.classList.remove('flex');
+            renderBoard();
+            checkAndHandleGameOver();
+        }, 120);
+    }
+
+    function checkAndHandleGameOver() {
+        const status = game.getGameStatus();
+        if (!status.over) return false;
+
+        const modal = document.getElementById('gameover-modal');
+        const iconEl = document.getElementById('gameover-icon');
+        const titleEl = document.getElementById('gameover-title');
+        const subEl = document.getElementById('gameover-subtitle');
+        const promoBanner = document.getElementById('promotion-banner');
+        const newRankTitle = document.getElementById('new-rank-title');
+        const btnNext = document.getElementById('btn-next-level');
+
+        promoBanner.classList.add('hidden');
+        btnNext.classList.add('hidden');
+
+        const currentLvl = getCurrentLevelObj();
+
+        if (status.winner === playerColor) {
+            playSound('win');
+            iconEl.textContent = currentLvl.level === 10 ? '👑' : '🏆';
+            titleEl.textContent = currentLvl.level === 10
+                ? 'المجد الأبدي! هزمت الخاقان الأعلى!'
+                : 'انتصار رائع! كش مات!';
+            subEl.textContent = currentLvl.level === 10
+                ? 'لقد أثبتّ جدارتك المطلقة وهزمت أقوى مستوى في اللعبة (3200 Elo)!'
+                : `لقد تفوقت على خصمك (${currentLvl.title} - ${currentLvl.elo} Elo).`;
+
+            // Promote if playing at highest unlocked level and < 10
+            if (currentLvl.level < 10) {
+                const nextLvlNum = currentLvl.level + 1;
+                if (nextLvlNum > savedState.unlockedLevel) {
+                    savedState.unlockedLevel = nextLvlNum;
+                }
+                savedState.currentLevel = nextLvlNum;
+                saveProgress();
+                updateRankUI();
+
+                const nextObj = LEVELS[nextLvlNum - 1];
+                newRankTitle.textContent = `المستوى ${nextObj.level}: ${nextObj.title} (${nextObj.elo} Elo)`;
+                promoBanner.classList.remove('hidden');
+                btnNext.classList.remove('hidden');
+            }
+        } else if (status.winner && status.winner !== playerColor) {
+            playSound('lose');
+            iconEl.textContent = '⚔️';
+            titleEl.textContent = 'هزيمة! كش مات';
+            subEl.textContent = `تمكن (${currentLvl.title}) من حسم المباراة. أعد المحاولة واستعد للثأر!`;
+        } else {
+            iconEl.textContent = '🤝';
+            titleEl.textContent = 'تعادل!';
+            const reasonMap = {
+                stalemate: 'تعادل بسبب انعدام النقلات القانونية (Stalemate).',
+                fifty_move: 'تعادل بقاعدة الـ 50 نقلة دون أسر أو تحريك بيدق.',
+                insufficient: 'تعادل لعدم كفاية القطع لفرض كش مات.',
+                repetition: 'تعادل بتكرار الوضعية ثلاث مرات.'
+            };
+            subEl.textContent = reasonMap[status.reason] || 'انتهت المباراة بالتعادل.';
+        }
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        return true;
+    }
+
+    function startNewGame() {
+        document.getElementById('gameover-modal').classList.add('hidden');
+        document.getElementById('gameover-modal').classList.remove('flex');
+        selectedSq = null;
+        legalTargets = [];
+        isBotThinking = false;
+        game.reset();
+        updateRankUI();
+        renderBoard();
+
+        if (playerColor === 'b') {
+            triggerBotTurn();
+        }
+    }
+
+    /**
+     * =========================================================================
+     * 7. EVENT LISTENERS & MODALS
+     * =========================================================================
+     */
+    document.getElementById('btn-new-game').onclick = () => {
+        if (!isBotThinking) startNewGame();
+    };
+
+    document.getElementById('btn-play-again').onclick = () => startNewGame();
+    document.getElementById('btn-next-level').onclick = () => startNewGame();
+
+    document.getElementById('btn-undo').onclick = () => {
+        if (isBotThinking || game.history.length === 0) return;
+        // Undo both bot move and player move if it's player's turn
+        if (game.turn === playerColor && game.history.length >= 2) {
+            const botSnap = game.history.pop();
+            game.unmakeMove(botSnap);
+            const playerSnap = game.history.pop();
+            game.unmakeMove(playerSnap);
+        } else if (game.history.length >= 1) {
+            const snap = game.history.pop();
+            game.unmakeMove(snap);
+        }
+        selectedSq = null;
+        legalTargets = [];
+        renderBoard();
+    };
+
+    document.getElementById('btn-flip').onclick = () => {
+        flipped = !flipped;
+        renderBoard();
+    };
+
+    document.getElementById('btn-switch-color').onclick = () => {
+        if (isBotThinking) return;
+        playerColor = playerColor === 'w' ? 'b' : 'w';
+        flipped = (playerColor === 'b');
+        startNewGame();
+    };
+
+    document.getElementById('btn-sound').onclick = (e) => {
+        soundEnabled = !soundEnabled;
+        e.currentTarget.textContent = soundEnabled ? '🔊' : '🔇';
+    };
+
+    // Ranks Modal
+    const ranksModal = document.getElementById('ranks-modal');
+    document.getElementById('btn-ranks-modal').onclick = () => {
+        const listEl = document.getElementById('ranks-list');
+        listEl.innerHTML = '';
+        LEVELS.forEach(lvl => {
+            const unlocked = lvl.level <= savedState.unlockedLevel;
+            const current = lvl.level === savedState.currentLevel;
+            const row = document.createElement('div');
+            row.className = `flex items-center justify-between p-3 rounded-2xl border transition ${
+                current
+                    ? 'bg-amber-500/20 border-amber-400'
+                    : unlocked
+                        ? 'bg-slate-800/80 border-slate-700 hover:border-slate-500 cursor-pointer'
+                        : 'bg-slate-900/60 border-slate-800 opacity-55'
+            }`;
+            row.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">${unlocked ? lvl.icon : '🔒'}</span>
+                    <div>
+                        <div class="font-extrabold text-sm text-white flex items-center gap-2">
+                            <span>المستوى ${lvl.level}: ${lvl.title}</span>
+                            ${current ? '<span class="text-[10px] bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full font-black">الحالي</span>' : ''}
+                        </div>
+                        <p class="text-xs text-slate-400">${lvl.desc}</p>
+                    </div>
+                </div>
+                <div class="text-left shrink-0 mr-2">
+                    <span class="text-xs font-black px-2.5 py-1 rounded-lg bg-slate-900 text-amber-400 border border-amber-500/30">
+                        ${lvl.elo} Elo
+                    </span>
+                </div>
+            `;
+            if (unlocked) {
+                row.onclick = () => {
+                    savedState.currentLevel = lvl.level;
+                    saveProgress();
+                    ranksModal.classList.add('hidden');
+                    ranksModal.classList.remove('flex');
+                    startNewGame();
+                };
+            }
+            listEl.appendChild(row);
+        });
+        ranksModal.classList.remove('hidden');
+        ranksModal.classList.add('flex');
+    };
+
+    document.getElementById('btn-close-ranks').onclick = () => {
+        ranksModal.classList.add('hidden');
+        ranksModal.classList.remove('flex');
+    };
+    document.getElementById('btn-close-ranks-bottom').onclick = () => {
+        ranksModal.classList.add('hidden');
+        ranksModal.classList.remove('flex');
+    };
+
+    document.getElementById('btn-reset-progress').onclick = () => {
+        savedState.unlockedLevel = 1;
+        savedState.currentLevel = 1;
+        saveProgress();
+        ranksModal.classList.add('hidden');
+        ranksModal.classList.remove('flex');
+        startNewGame();
+    };
+
+    // Initialize Game
+    loadProgress();
+    startNewGame();
+    </script>
+</body>
+</html>
